@@ -5,8 +5,8 @@ from typing import Union
 ERRO = 0
 IDENTIF = 1
 RESERVADA = 2
-NUMINT = 3
-NUMREAL = 4
+NUM_INT = 3
+NUM_REAL = 4
 OPREL = 5 
 OPARIT = 6
 EOS = 7
@@ -22,7 +22,7 @@ class Token(NamedTuple):
 class AnalisadorLexico:
     def __init__(self, buffer):
         self.buffer = buffer + '\0'
-        self.linha = 1
+        self.nlinha = 1
         self.i = 0
 
     def retract_char(self):
@@ -35,6 +35,7 @@ class AnalisadorLexico:
     
     def proximo_token(self):
         token = ERRO
+        c = self.proximo_char()
         while (c in  [' ', '\n','\0']):
             if (c == '\n'):
                 self.nlinha += 1
@@ -45,13 +46,69 @@ class AnalisadorLexico:
             token = self.reconhece_ID()
         elif (c.isdigit()):
             token = self.reconhece_NUM()
+        elif (self.is_Arit()):
+            token = self.reconhece_Arit()
         else:
-            token = self.reconhece_OP()
+            token = self.reconhece_Rel()
         return token
+
+    def is_Arit(self):
+        lexema = self.buffer[self.i - 1]
+        return lexema in ['+', '-', '*', '/', '%']
     
+    def reconhece_Arit(self):
+        lexema = self.buffer[self.i - 1]
+        estado = 1
+        while True:
+            if estado == 1:
+                c = self.proximo_char()
+                if lexema in ['+', '-']:
+                    if c == '=':
+                        lexema += c
+                    return Token(OPARIT, lexema, 0, self.nlinha)
+                estado = 2
+            elif estado == 2:
+                if lexema == '*':
+                    if c == '*' or c == '=':
+                        lexema += c
+                    return Token(OPARIT, lexema, 0, self.nlinha)
+                elif lexema == '/':
+                    if c == '/' or c == '=':
+                        lexema += c
+                    return Token(OPARIT, lexema, 0, self.nlinha)
+                elif lexema == '%':
+                    if c == '=':
+                        lexema += c
+                    return Token(OPARIT, lexema, 0, self.nlinha)
+                return Token(ERRO, '', 0, self.nlinha)
+
+    def reconhece_Rel(self):
+        lexema = self.buffer[self.i - 1]
+        estado = 1
+        while True:
+            if estado == 1:
+                c = self.proximo_char()
+                if lexema in ['>','<']:
+                    if c == "=":
+                        lexema += c
+                    return Token(OPREL, lexema, 0, self.nlinha)
+                elif lexema in ['!','=']:
+                    estado = 2
+                else:
+                    return Token(ERRO, '', 0, self.nlinha)
+            elif estado == 2:
+                if c == "=":
+                    lexema += c
+                    return Token(OPREL, lexema, 0, self.nlinha)
+                else:
+                    return Token(ERRO, '', 0, self.nlinha)    
     def reconhece_ID(self):
         lexema = self.buffer[self.i - 1]
-        palavras_reservadas = []
+        palavras_reservadas = ['and','as','assert','break',
+        'class','continue','def','del','elif','else','except'
+        'False' 'finally','for','from','global','if','import',
+        'in','is','lambda','None','nonlocal','not','or','pass',
+        'raise','return','True','try','while','with','yield']
         c = self.proximo_char()
         while (c.isalpha() or c.isdigit()):
             lexema = lexema + c
@@ -95,15 +152,6 @@ class AnalisadorLexico:
                 else:
                     return Token(ERRO, '', 0, self.nlinha)
 
-    def reconhece_OP(self):
-        lexema = self.buffer[self.i - 1]
-        print("lexema = ", lexema)
-        estado = 1
-        while True:
-            if (estado == 1):
-                c = self.proximo_char()
-
-
 def leia_arquivo():
     if len(sys.argv) > 1:
         arquivo = open(sys.argv[1], 'r')
@@ -114,15 +162,17 @@ def leia_arquivo():
     return buffer
 
 def main():
-    buffer = leia_arquivo()
-    lex = Analisador_Lexico(buffer)
+    buffer = buff
+    lex = AnalisadorLexico(buffer)
     token = lex.proximo_token()
     print(token)
     while (token.tipo != EOS and token.tipo != ERRO):
         print("Linha: {}  -  token: {} \tlexema: {} \t\tvalor: \
     {}".format(token.linha, token_msg[token.tipo], token.lexema, token.valor))
         token = lex.proximo_token()
-        print("Linha: {}  -  token: {} \tlexema: {} \t\tvalor: \
+    print("Linha: {}  -  token: {} \tlexema: {} \t\tvalor: \
     {}".format(token.linha, token_msg[token.tipo], token.lexema, token.valor))
-
+buff = """
+()
+"""
 main()
